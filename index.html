@@ -64,6 +64,13 @@
 <section class="carta2" id="carta">
   <p class="eyebrow">El menú de Jambo</p>
   <h2 class="big">La carta</h2>
+  <div class="c2-help">
+  <p>¿No te decides? Deja que Jambo elija por ti.</p>
+  <div class="c2-help-btns">
+    <button class="pbtn gold" id="openQuiz" type="button">¿Qué me pido?</button>
+    <button class="pbtn red" id="openRl" type="button">Ruleta Jambo · ¿Te la juegas?</button>
+  </div>
+</div>
   <p class="c2-sub">Hamburguesas de pocas. Mucho sabor.</p>
   <div class="c2-info">
     <div class="ii"><i>🌾</i><span><b>Disponemos de pan sin gluten</b></span></div>
@@ -225,7 +232,33 @@
   <p class="foot-copy">© 2026 Jambo — Granada</p>
 </footer>
 
+<div class="qmodal" id="qmodal" role="dialog" aria-modal="true" aria-label="¿Qué me pido?">
+  <div class="qpanel">
+    <button class="qclose" id="qclose" type="button" aria-label="Cerrar">×</button>
+    <p class="eyebrow">¿No te decides?</p>
+    <h2>¿Qué me pido?</h2>
+    <div class="qz-box" id="quiz" aria-live="polite"></div>
+  </div>
+</div>
+
+<div class="rmodal" id="rmodal" role="dialog" aria-modal="true" aria-label="La ruleta Jambo">
+  <div class="rpanel">
+    <button class="rclose" id="rclose" type="button" aria-label="Cerrar">×</button>
+    <p class="r-eye">Para los más indecisos</p>
+    <h2>¿Te la juegas?</h2>
+    <p class="r-sub">Gira la ruleta y pídete la burger que te toque. Sin peros.</p>
+    <div class="wheel-wrap">
+      <div class="pointer" aria-hidden="true"></div>
+      <div class="wheel" id="wheel" aria-hidden="true"></div>
+    </div>
+    <button class="pbtn gold" id="spin" type="button">¡Girar!</button>
+    <div class="rl-out" id="rl-out" aria-live="polite"></div>
+  </div>
+</div>
 <script src="script.js"></script>
 <script src="carta.js"></script>
+<script src="quiz.js"></script>
+<script src="ruleta.js"></script>
+<script src="arcade.js"></script>
 </body>
 </html>

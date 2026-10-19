@@ -34,7 +34,8 @@
     {cat:'postres',img:'nutella',name:'Cremoso de Nutella',price:3.9,desc:'Cremoso de Nutella y almendra. Para los más golosos.'},
     {cat:'postres',img:'brownie',name:'Brownie',price:4.9,desc:'Brownie de chocolate con caramelo salado. El contraste dulce y salado que nunca falla.'},
   ];
-
+  
+  window.JAMBO_ITEMS=ITEMS;
   var tabs=document.getElementById('tabs'),grid=document.getElementById('grid');
   if(!tabs||!grid)return;
   function eur(n){return n.toFixed(2).replace('.',',')+' €'}

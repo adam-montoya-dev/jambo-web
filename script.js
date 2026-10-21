@@ -67,5 +67,7 @@
   function onScroll(){tb.classList.toggle('solid',window.scrollY>40)}
   addEventListener('scroll',onScroll,{passive:true});onScroll();
     window.jamboAdd=add;
+    window.jamboGetCart=function(){return cart};
+    window.jamboClear=function(){cart={};draw()};
   draw();
 })();

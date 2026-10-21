@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Jambo · Panel de pedidos</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#121110;color:#f3efe9;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+[hidden]{display:none !important}
+button,input{font:inherit}
+button{cursor:pointer}
+.login{max-width:360px;margin:12vh auto;padding:24px;background:#1b1a18;border-radius:14px}
+.login h1{margin:0 0 16px;font-size:1.6rem}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#262421;color:#fff;margin:6px 0}
+.b{padding:12px 18px;border-radius:10px;border:2px solid #fff;background:transparent;color:#fff;font-weight:700}
+.b.ok{background:#2e9e4f;border-color:#2e9e4f}
+.b.go{background:#c8372d;border-color:#c8372d}
+.b.warn{border-color:#8a8a8a;color:#bbb}
+.b.sm{padding:6px 10px;font-size:.85rem}
+.err{color:#ff8a80;min-height:1.2em}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px 18px;background:#1b1a18;border-bottom:1px solid #333}
+header h1{margin:0;font-size:1.3rem}
+.cfg{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 18px;background:#171614;border-bottom:1px solid #333}
+.cfg label{display:flex;align-items:center;gap:6px;font-size:.9rem;color:#cfc9c0}
+.cfg input[type=number]{width:70px;margin:0;padding:8px}
+.tog{display:flex;align-items:center;gap:8px;font-weight:700}
+.tog input{width:22px;height:22px;margin:0}
+.cols{display:grid;grid-template-columns:1fr;gap:16px;padding:16px}
+@media(min-width:900px){.cols{grid-template-columns:repeat(3,1fr)}}
+.col h2{margin:0 0 10px;font-size:1.1rem;display:flex;justify-content:space-between}
+.col h2 span{background:#c8372d;border-radius:999px;padding:2px 10px;font-size:.9rem}
+.card{background:#1f1d1b;border:1px solid #3a3733;border-radius:12px;padding:14px;margin-bottom:12px}
+.card.nuevo{border-color:#f5a524;box-shadow:0 0 0 2px rgba(245,165,36,.35)}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.top b{font-size:1.15rem}
+.when{color:#f5a524;font-weight:700;margin:4px 0}
+.items{margin:8px 0;padding:0;list-style:none}
+.items li{padding:3px 0;border-bottom:1px dashed #3a3733}
+.notes{background:#4a1f1b;border-radius:8px;padding:8px;margin:8px 0;font-weight:700}
+.tot{text-align:right;font-weight:700;margin:6px 0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row input{width:80px;margin:0;padding:8px}
+a{color:#f5a524}
+.empty{color:#8c877f}
+details{margin:0 16px 24px;color:#cfc9c0}
+</style>
+</head>
+<body>
+
+<div class="login" id="login">
+  <h1>Jambo · Pedidos</h1>
+  <input id="em" type="email" placeholder="Correo" autocomplete="username">
+  <input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password">
+  <p class="err" id="lerr" role="alert"></p>
+  <button class="b go" id="lbtn" type="button">Entrar</button>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>Jambo · Pedidos de hoy</h1>
+    <div class="row">
+      <button class="b warn sm" id="snd" type="button">🔔 Activar sonido</button>
+      <button class="b warn sm" id="out" type="button">Salir</button>
+    </div>
+  </header>
+
+  <div class="cfg">
+    <label class="tog"><input type="checkbox" id="c-abierto"> Aceptando pedidos online</label>
+    <label>Tiempo base (min) <input type="number" id="c-base" min="0" max="120"></label>
+    <label>+ min por burger <input type="number" id="c-pu" min="0" max="30"></label>
+    <label>+ min extra (saturación) <input type="number" id="c-extra" min="0" max="120"></label>
+    <button class="b sm" id="x0" type="button">Normal</button>
+    <button class="b sm" id="x10" type="button">Estamos a tope +10</button>
+    <button class="b sm" id="x20" type="button">+20</button>
+    <button class="b ok sm" id="csave" type="button">Guardar</button>
+    <span id="cmsg" class="empty"></span>
+  </div>
+
+  <div class="cols">
+    <div class="col"><h2>Nuevos <span id="n1">0</span></h2><div id="l1"></div></div>
+    <div class="col"><h2>En preparación <span id="n2">0</span></h2><div id="l2"></div></div>
+    <div class="col"><h2>Listos para recoger <span id="n3">0</span></h2><div id="l3"></div></div>
+  </div>
+  <details><summary>Entregados y rechazados hoy (<span id="n4">0</span>)</summary><div id="l4"></div></details>
+</div>
+
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import {getFirestore,collection,query,where,orderBy,onSnapshot,doc,updateDoc,setDoc,Timestamp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import {firebaseConfig} from './firebase-config.js';
+
+var $=function(i){return document.getElementById(i)};
+if(!firebaseConfig||/^PEGA/.test(firebaseConfig.projectId||'PEGA')){
+  $('lerr').textContent='Falta rellenar firebase-config.js';
+}
+var app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+var DEF={abierto:true,base:15,porUnidad:3,extra:0};
+var cfg=Object.assign({},DEF),orders=[],firstLoad=true,soundOn=false,ctx=null,unsubs=[],ring=null;
+
+function pad(n){return (n<10?'0':'')+n}
+function madMin(){var d=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Madrid'}));return d.getHours()*60+d.getMinutes()}
+function fmt(m){m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+':'+pad(m%60)}
+function eur(n){return Number(n).toFixed(2).replace('.',',')+' €'}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+
+/* ---------- acceso ---------- */
+$('lbtn').onclick=async function(){
+  $('lerr').textContent='';
+  try{await signInWithEmailAndPassword(auth,$('em').value.trim(),$('pw').value)}
+  catch(e){$('lerr').textContent='Correo o contraseña incorrectos.'}
+};
+$('pw').onkeydown=function(e){if(e.key==='Enter')$('lbtn').click()};
+$('out').onclick=function(){signOut(auth)};
+
+onAuthStateChanged(auth,function(u){
+  unsubs.forEach(function(f){f()});unsubs=[];
+  if(ring){clearInterval(ring);ring=null}
+  if(!u){$('login').hidden=false;$('app').hidden=true;return}
+  $('login').hidden=true;$('app').hidden=false;
+  firstLoad=true;
+  unsubs.push(onSnapshot(doc(db,'config','local'),function(s){
+    cfg=Object.assign({},DEF,s.exists()?s.data():{});
+    $('c-abierto').checked=!!cfg.abierto;$('c-base').value=cfg.base;$('c-pu').value=cfg.porUnidad;$('c-extra').value=cfg.extra;
+  }));
+  var d0=new Date();d0.setHours(0,0,0,0);
+  var q=query(collection(db,'pedidos'),where('creado','>=',Timestamp.fromDate(d0)),orderBy('creado','asc'));
+  unsubs.push(onSnapshot(q,function(snap){
+    orders=snap.docs.map(function(d){return Object.assign({id:d.id},d.data())});
+    var added=!firstLoad&&snap.docChanges().some(function(c){return c.type==='added'&&c.doc.data().estado==='nuevo'});
+    firstLoad=false;
+    draw();
+    if(added)alertNew();
+  },function(e){console.error(e);alert('No tienes permiso para ver los pedidos. Revisa las reglas y el correo del dueño.')}));
+  ring=setInterval(function(){
+    if(soundOn&&orders.some(function(o){return o.estado==='nuevo'}))beep();
+  },20000);
+});
+
+/* ---------- sonido ---------- */
+$('snd').onclick=function(){
+  try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();ctx.resume();soundOn=true;this.textContent='🔔 Sonido activado';beep()}
+  catch(e){alert('Este navegador no permite sonido.')}
+};
+function beep(){
+  if(!ctx)return;
+  [0,.3,.6].forEach(function(t){
+    var o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='square';o.frequency.value=880;o.connect(g);g.connect(ctx.destination);
+    var s=ctx.currentTime+t;g.gain.setValueAtTime(.25,s);g.gain.exponentialRampToValueAtTime(.001,s+.22);
+    o.start(s);o.stop(s+.25);
+  });
+}
+function alertNew(){
+  if(soundOn)beep();
+  var t=document.title;document.title='🔔 NUEVO PEDIDO';
+  setTimeout(function(){document.title=t},6000);
+}
+
+/* ---------- ajustes ---------- */
+function saveCfg(extra){
+  var data={
+    abierto:$('c-abierto').checked,
+    base:Number($('c-base').value)||0,
+    porUnidad:Number($('c-pu').value)||0,
+    extra:extra!=null?extra:(Number($('c-extra').value)||0)
+  };
+  return setDoc(doc(db,'config','local'),data,{merge:true}).then(function(){
+    $('cmsg').textContent='Guardado ✓';setTimeout(function(){$('cmsg').textContent=''},2000);
+  }).catch(function(){$('cmsg').textContent='No se pudo guardar'});
+}
+$('csave').onclick=function(){saveCfg()};
+$('c-abierto').onchange=function(){saveCfg()};
+$('x0').onclick=function(){$('c-extra').value=0;saveCfg(0)};
+$('x10').onclick=function(){$('c-extra').value=10;saveCfg(10)};
+$('x20').onclick=function(){$('c-extra').value=20;saveCfg(20)};
+
+/* ---------- pedidos ---------- */
+function card(o){
+  var h='<div class="card '+esc(o.estado)+'"><div class="top"><b>#'+esc(o.id.slice(-4).toUpperCase())+' · '+esc(o.nombre)+'</b><a href="tel:'+esc(o.telefono)+'">'+esc(o.telefono)+'</a></div>';
+  h+='<div class="when">'+(o.modo==='hora'?'Recoge a las '+esc(o.hora):'Lo antes posible')+'</div>';
+  h+='<ul class="items">'+(o.items||[]).map(function(i){return '<li>'+esc(i.q)+' × '+esc(i.n)+'</li>'}).join('')+'</ul>';
+  if(o.notas)h+='<div class="notes">⚠ '+esc(o.notas)+'</div>';
+  h+='<div class="tot">Total (web): '+eur(o.total)+' · pago al recoger</div><div class="row">';
+  if(o.estado==='nuevo'){
+    if(o.modo==='hora'){
+      h+='<button class="b ok" data-a="acc" data-id="'+o.id+'" data-h="'+esc(o.hora)+'">Aceptar para las '+esc(o.hora)+'</button>';
+    }else{
+      h+='<input type="number" min="1" max="180" value="'+esc(o.etaSug||cfg.base)+'" id="eta-'+o.id+'" aria-label="Minutos"> min ';
+      h+='<button class="b ok" data-a="acc" data-id="'+o.id+'">Aceptar</button>';
+    }
+    h+='<button class="b warn" data-a="rej" data-id="'+o.id+'">Rechazar</button>';
+  }else if(o.estado==='aceptado'){
+    h+='<span>Listo sobre las <b>'+esc(o.listoA||'—')+'</b></span><button class="b go" data-a="rdy" data-id="'+o.id+'">¡Listo!</button>';
+  }else if(o.estado==='listo'){
+    h+='<button class="b ok" data-a="del" data-id="'+o.id+'">Entregado</button>';
+  }else{
+    h+='<span class="empty">'+esc(o.estado)+(o.motivo?': '+esc(o.motivo):'')+'</span>';
+  }
+  return h+'</div></div>';
+}
+function draw(){
+  var g={nuevo:[],aceptado:[],listo:[],otros:[]};
+  orders.forEach(function(o){(g[o.estado]||g.otros).push(o)});
+  function put(id,nid,arr){
+    $(nid).textContent=arr.length;
+    $(id).innerHTML=arr.length?arr.map(card).join(''):'<p class="empty">Nada por aquí.</p>';
+  }
+  put('l1','n1',g.nuevo);put('l2','n2',g.aceptado);put('l3','n3',g.listo);put('l4','n4',g.otros);
+}
+$('app').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-a]');if(!b)return;
+  var id=b.dataset.id,ref=doc(db,'pedidos',id),a=b.dataset.a;
+  b.disabled=true;
+  var p;
+  if(a==='acc'){
+    var listoA;
+    if(b.dataset.h){listoA=b.dataset.h}
+    else{
+      var m=Number(($('eta-'+id)||{}).value)||15;
+      listoA=fmt(madMin()+m);
+      p=updateDoc(ref,{estado:'aceptado',etaMin:m,listoA:listoA});
+    }
+    if(b.dataset.h)p=updateDoc(ref,{estado:'aceptado',listoA:listoA});
+  }else if(a==='rej'){
+    var motivo=prompt('Motivo (lo verá el cliente):','Lo sentimos, ahora mismo estamos saturados.');
+    if(motivo===null){b.disabled=false;return}
+    p=updateDoc(ref,{estado:'rechazado',motivo:motivo.slice(0,150)});
+  }else if(a==='rdy'){p=updateDoc(ref,{estado:'listo'})}
+  else if(a==='del'){p=updateDoc(ref,{estado:'entregado'})}
+  if(p)p.catch(function(){alert('No se pudo guardar el cambio. Comprueba la conexión.');b.disabled=false});
+});
+</script>
+</body>
+</html>

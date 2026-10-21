@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // CAMBIA ESTOS CORREOS por los de los dueños (los mismos con los que crees su usuario en Authentication)
+    function isOwner() {
+      return request.auth != null
+        && request.auth.token.email in ['correo-del-dueno@ejemplo.com'];
+    }
+
+    // Ajustes del local: los clientes los leen; solo los dueños los cambian
+    match /config/local {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
+    match /pedidos/{id} {
+      // Un cliente solo puede leer un pedido si conoce su identificador (largo y aleatorio)
+      allow get: if true;
+      // Solo los dueños pueden ver la lista completa
+      allow list: if isOwner();
+
+      allow create: if request.resource.data.keys().hasOnly(
+            ['nombre','telefono','modo','hora','notas','items','total','etaSug','estado','creado'])
+        && request.resource.data.estado == 'nuevo'
+        && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() >= 1 && request.resource.data.nombre.size() <= 40
+        && request.resource.data.telefono is string
+        && request.resource.data.telefono.size() >= 9 && request.resource.data.telefono.size() <= 16
+        && request.resource.data.modo in ['ya','hora']
+        && request.resource.data.hora is string && request.resource.data.hora.size() <= 5
+        && request.resource.data.notas is string && request.resource.data.notas.size() <= 300
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 30
+        && request.resource.data.total is number
+        && request.resource.data.total > 0 && request.resource.data.total < 500
+        && request.resource.data.etaSug is number
+        && request.resource.data.etaSug >= 0 && request.resource.data.etaSug <= 240
+        && request.resource.data.creado == request.time;
+
+      allow update, delete: if isOwner();
+    }
+  }
+}
